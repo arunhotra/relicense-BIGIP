@@ -26,4 +26,4 @@ Docker
 
 ``` ansible-playbook relicense.yml -i hosts ```
 
-It will ask you for username, password. Username and password can be any read only user on the big-ip. 
+It will ask you for username, password and license server -activate.f5.com/internal. Username can be any read only user on the big-ip. 
