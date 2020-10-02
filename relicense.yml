@@ -1,0 +1,66 @@
+---
+- name: Relicense the BIG IP 
+  hosts: all
+  connection: local
+  gather_facts: no
+
+  collections:
+    - f5networks.f5_modules
+
+
+  vars_prompt:
+    - name: ansible_user
+      prompt: "What is your username?"
+      private: no
+
+    - name: ansible_ssh_pass
+      prompt: "What is your password?"
+      private: yes
+
+    - name: license_server
+      prompt: "What is your license server?"
+      private: no
+
+  tasks:
+    - name: Set a fact named 'provider' with BIG-IP login information
+      set_fact:
+        provider:
+          server: "{{ansible_host}}"
+          user: "{{ansible_user}}"
+          password: "{{ansible_ssh_pass}}"
+          server_port: 443
+          validate_certs: no
+
+    - name: run show sys license
+      bigip_command:
+        commands: show sys license
+        provider: "{{provider}}"
+      register: license_facts
+
+
+    - name: Copy output of "show sys license" to file
+      copy:
+        content: "{{ license_facts.stdout_lines | to_nice_json }}"
+        dest: "license.json"
+
+
+    - name: Run the python script to parse the license keys
+      shell: python3 parse.py license.json
+
+    - name: Display the JSON file content
+      shell: cat lic_keys.json
+      register: keys
+
+
+    - name: Save the Status Json data to a Variable as a Fact
+      set_fact:
+        keys_json: "{{ keys.stdout | from_json }}"
+
+
+        
+    - name: License the BIG-IP
+      bigip_device_license:
+        license_key: "{{ keys_json.reg_key }}"
+        addon_keys: "{{ keys_json.addon_keys }}"
+        provider: "{{provider}}"
+        license_server: "{{ license_server }}"
